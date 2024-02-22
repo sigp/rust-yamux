@@ -37,6 +37,9 @@ use std::{fmt, sync::Arc, task::Poll};
 
 pub use stream::{Packet, State, Stream};
 
+/// Max queued frames in `Connection`.
+const MAX_FRAME_BUFFER: usize = 2000;
+
 /// How the connection is used.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Mode {
@@ -396,6 +399,11 @@ impl<T: AsyncRead + AsyncWrite + Unpin> Active<T> {
                     self.socket.start_send_unpin(frame)?;
                     continue;
                 }
+            }
+
+            // Receiver is not reading.
+            if self.pending_frames.len() == MAX_FRAME_BUFFER {
+                return Poll::Ready(Err(ConnectionError::Closed));
             }
 
             match self.socket.poll_flush_unpin(cx)? {
