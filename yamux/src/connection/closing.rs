@@ -26,13 +26,13 @@ where
 {
     pub(crate) fn new(
         stream_receivers: SelectAll<TaggedStream<StreamId, mpsc::Receiver<StreamCommand>>>,
-        pending_frames: VecDeque<Frame<()>>,
+        pending_frame: VecDeque<Frame<()>>,
         socket: Fuse<frame::Io<T>>,
     ) -> Self {
         Self {
-            state: State::ClosingStreamReceiver,
+            state: State::FlushingPendingFrames,
             stream_receivers,
-            pending_frames,
+            pending_frames: pending_frame,
             socket,
         }
     }
@@ -59,7 +59,7 @@ where
                 State::DrainingStreamReceiver => {
                     match this.stream_receivers.poll_next_unpin(cx) {
                         Poll::Ready(Some((_, Some(StreamCommand::SendFrame(frame))))) => {
-                            this.pending_frames.push_back(frame.into())
+                            this.pending_frames.push_back(frame.into());
                         }
                         Poll::Ready(Some((id, Some(StreamCommand::CloseStream { ack })))) => {
                             this.pending_frames
@@ -69,7 +69,7 @@ where
                         Poll::Pending | Poll::Ready(None) => {
                             // No more frames from streams, append `Term` frame and flush them all.
                             this.pending_frames.push_back(Frame::term().into());
-                            this.state = State::FlushingPendingFrames;
+                            this.state = State::ClosingSocket;
                             continue;
                         }
                     }
@@ -79,7 +79,7 @@ where
 
                     match this.pending_frames.pop_front() {
                         Some(frame) => this.socket.start_send_unpin(frame)?,
-                        None => this.state = State::ClosingSocket,
+                        None => this.state = State::ClosingStreamReceiver,
                     }
                 }
                 State::ClosingSocket => {
