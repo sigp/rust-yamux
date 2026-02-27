@@ -94,7 +94,7 @@ impl Default for Config {
             max_num_streams: 512,
             read_after_close: true,
             split_send_size: DEFAULT_SPLIT_SEND_SIZE,
-            connection_close_timeout: None,
+            connection_close_timeout: Some(Duration::from_secs(5)),
         }
     }
 }
