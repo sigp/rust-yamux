@@ -615,6 +615,14 @@ impl<T: AsyncRead + AsyncWrite + Unpin> Active<T> {
                 log::error!("{}: invalid stream id {}", self.id, stream_id);
                 return Action::Terminate(Frame::protocol_error());
             }
+            if frame.body().len() > DEFAULT_CREDIT as usize {
+                log::error!(
+                    "{}/{}: 1st body of stream exceeds default credit",
+                    self.id,
+                    stream_id
+                );
+                return Action::Terminate(Frame::protocol_error());
+            }
             if self.streams.contains_key(&stream_id) {
                 log::error!("{}/{}: stream already exists", self.id, stream_id);
                 return Action::Terminate(Frame::protocol_error());
@@ -719,7 +727,10 @@ impl<T: AsyncRead + AsyncWrite + Unpin> Active<T> {
                 return Action::Terminate(Frame::protocol_error());
             }
 
-            let credit = frame.header().credit() + DEFAULT_CREDIT;
+            let Some(credit) = frame.header().credit().checked_add(DEFAULT_CREDIT) else {
+                log::error!("{}: header contains invalid credit", self.id,);
+                return Action::Terminate(Frame::protocol_error());
+            };
             let stream = self.make_new_inbound_stream(stream_id, credit);
 
             if is_finish {
