@@ -509,7 +509,7 @@ impl<T: AsyncRead + AsyncWrite + Unpin> Active<T> {
     }
 
     fn on_drop_stream(&mut self, stream_id: StreamId) -> Option<Frame<()>> {
-        let s = self.streams.remove(&stream_id).expect("stream not found");
+        let s = self.streams.remove(&stream_id)?;
 
         log::trace!("{}: removing dropped stream {}", self.id, stream_id);
         let frame = {
