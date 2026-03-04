@@ -81,7 +81,7 @@ impl FlowController {
         if self
             .rtt
             .get()
-            .map(|rtt| self.last_window_update.elapsed() < rtt * 2)
+            .map(|rtt| self.last_window_update.elapsed() < rtt.saturating_mul(2))
             .unwrap_or(false)
         {
             let mut accumulated_max_stream_windows = self.accumulated_max_stream_windows.lock();
@@ -267,6 +267,7 @@ mod tests {
                 (max_receive_window - DEFAULT_CREDIT) as usize
                     ..max_connection_minus_default.saturating_add(1),
             )));
+            #[allow(clippy::arithmetic_side_effects)]
             let last_window_update =
                 Instant::now() - Duration::from_secs(g.gen_range(0..(60 * 60 * 24)));
             let send_window = g.gen_range(0..u32::MAX);

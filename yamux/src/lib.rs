@@ -23,6 +23,7 @@
 //! [1]: https://github.com/hashicorp/yamux/blob/master/spec.md
 
 #![forbid(unsafe_code)]
+#![deny(clippy::arithmetic_side_effects)]
 
 mod chunks;
 mod error;

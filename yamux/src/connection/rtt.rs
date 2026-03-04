@@ -75,7 +75,10 @@ impl Rtt {
         log::debug!("received pong {received_nonce}, estimated round-trip-time {rtt:?}");
 
         inner.state = RttState::Waiting {
-            next: Instant::now() + PING_INTERVAL,
+            // Current time plus short PING_INTERVAL should never overflow.
+            next: Instant::now()
+                .checked_add(PING_INTERVAL)
+                .unwrap_or_else(Instant::now),
         };
 
         Action::None
